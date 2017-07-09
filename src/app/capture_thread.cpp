@@ -39,10 +39,12 @@ CaptureThread::CaptureThread(int cam_id)
   captureModule->addItem("Video 4 Linux");
   captureModule->addItem("Read from files");
   captureModule->addItem("Generator");
+  captureModule->addItem("From ROS Topic");
   settings->addChild( (VarType*) (dc1394 = new VarList("DC1394")));
   settings->addChild( (VarType*) (v4l = new VarList("Video 4 Linux")));
   settings->addChild( (VarType*) (fromfile = new VarList("Read from files")));
   settings->addChild( (VarType*) (generator = new VarList("Generator")));
+  settings->addChild( (VarType*) (ROS = new VarList("From ROS Topic")));
   settings->addFlags( VARTYPE_FLAG_AUTO_EXPAND_TREE );
   c_stop->addFlags( VARTYPE_FLAG_READONLY );
   c_refresh->addFlags( VARTYPE_FLAG_READONLY );
@@ -58,7 +60,11 @@ CaptureThread::CaptureThread(int cam_id)
   captureFiles = new CaptureFromFile(fromfile);
   captureGenerator = new CaptureGenerator(generator);
   captureV4L = new CaptureV4L(v4l,camId);
-  
+  char *argv[] = {"dummy", NULL};
+  int argc = sizeof(argv) / sizeof(char*) - 1;
+  ros::init(argc, argv, "image_listener");
+  nh = new ros::NodeHandle();
+  captureROS = new CaptureROS(ROS, nh);
 #ifdef MVIMPACT
   captureModule->addItem("BlueFox2");
   settings->addChild( (VarType*) (bluefox2 = new VarList("BlueFox2")));
@@ -89,6 +95,8 @@ CaptureThread::~CaptureThread()
   delete captureDC1394;
   delete captureV4L;
   delete captureFiles;
+  delete captureROS;
+  delete nh;
   delete captureGenerator;
   delete counter;
   
@@ -125,6 +133,8 @@ void CaptureThread::selectCaptureMethod() {
     new_capture = captureV4L;
   } else if(captureModule->getString() == "DC 1394") {
     new_capture = captureDC1394;
+  }else if (captureModule->getString() == "From ROS Topic") {
+    new_capture = captureROS;
   }
 
   if (old_capture!=0 && new_capture!=old_capture && old_capture->isCapturing()) {
@@ -196,6 +206,7 @@ void CaptureThread::run() {
 
     while(true) {
       if (rb!=0) {
+        ros::spinOnce();
         int idx=rb->curWrite();
         FrameData * d=rb->getPointer(idx);
         if ((stats=(CaptureStats *)d->map.get("capture_stats")) == 0) {

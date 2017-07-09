@@ -1,70 +1,46 @@
 project(ssl-vision)
 cmake_minimum_required(VERSION 2.6)
 
+
+
+find_package(catkin REQUIRED COMPONENTS
+  roscpp
+  rospy
+  std_msgs
+  image_transport
+  cv_bridge
+)
+include_directories(
+  ${catkin_INCLUDE_DIRS}
+)
+
+catkin_package()
 #defines
 add_definitions(-D UNIX)
 add_definitions(-D LINUX)
 add_definitions(-D _GNU_SOURCE)
 
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/cmake)
-
 SET(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 
-# Find third-party libraries
-find_package(OpenGL REQUIRED)
-find_package(Qt4 4.8.0 COMPONENTS QtCore QtGui QtOpenGL QtNetwork REQUIRED)
-find_package(Threads REQUIRED)
+set (QT_USE_QTNETWORK true)
+set (QT_USE_QTOPENGL true)
 
-find_package(Protobuf REQUIRED)
-if(EXISTS ${PROTOBUF_PROTOC_EXECUTABLE})
-	message(STATUS "Found PROTOBUF Compiler: ${PROTOBUF_PROTOC_EXECUTABLE}")
-else()
-	message(FATAL_ERROR "Could not find PROTOBUF Compiler")
-endif()
+find_package ( Qt4  4.8.6 COMPONENTS QtCore QtGui QtXml REQUIRED )
 
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(Eigen3 REQUIRED eigen3)
-pkg_check_modules(DC1394 REQUIRED libdc1394-2)
-
-include_directories(
-	${PROJECT_BINARY_DIR}
-	${Eigen3_INCLUDE_DIRS}
-	${PROTOBUF_INCLUDE_DIRS}
-)
+include_directories(${PROJECT_BINARY_DIR})
 
 include ( ${QT_USE_FILE} )
-
-find_package(mvIMPACT QUIET)
+message("${QT_LIBRARIES} >><><><><")
+message("cmake prefix path: ${CMAKE_PREFIX_PATH}")
 
 include(src/shared/CMakeLists.txt.inc)
-
-if(${mvIMPACT_FOUND} MATCHES "TRUE")
-  include_directories(${mvIMPACT_INCLUDE_DIRS})
-  add_definitions(-D MVIMPACT)
-  set (SHARED_SRCS ${SHARED_SRCS} ${shared_dir}/capture/capture_bluefox2.cpp)
-  set (SHARED_HEADERS ${SHARED_HEADERS} ${shared_dir}/capture/capture_bluefox2.h)
-  message(STATUS "mvIMPACT found => BlueFox2 support enabled")
-else()
-  message(STATUS "mvIMPACT NOT found => BlueFox2 support disabled")
-endif()
-
-find_package( OpenCV 2 QUIET )
-if(OpenCV_FOUND)
-  include_directories(${OpenCV_INCLUDE_DIRS})
-  add_definitions(-D OPENCV)
-  set (OPTIONAL_SRCS ${OPTIONAL_SRCS} src/app/gui/neurowidget.cpp src/app/plugins/plugin_neuralcolorcalib.cpp)
-  set (OPTIONAL_HEADERS ${OPTIONAL_HEADERS} src/app/gui/neurowidget.h)
-  set (OPTIONAL_UI_SRCS ${OPTIONAL_UI_SRCS} src/app/gui/neurowidget.ui)
-  message(STATUS "OpenCV found")
-else()
-  message(WARNING "OpenCV NOT found => Neural Calibration not available")
-endif()
 
 include_directories(${PROJECT_SOURCE_DIR}/src/app)
 include_directories(${PROJECT_SOURCE_DIR}/src/app/gui)
 include_directories(${PROJECT_SOURCE_DIR}/src/app/plugins)
 include_directories(${PROJECT_SOURCE_DIR}/src/app/stacks)
-
+message("My Msg+++++++++++++++++++++++++++++++++++++++++++++++++ ${eigen3_INCLUDE_DIRS}")
+include_directories(include ${catkin_INCLUDE_DIRS} ${eigen3_INCLUDE_DIRS})
 set (SRCS
 	src/app/capture_thread.cpp
 	src/app/framedata.cpp
@@ -100,8 +76,6 @@ set (SRCS
 	src/app/stacks/multivisionstack.cpp
 	src/app/stacks/stack_robocup_ssl.cpp
 	src/app/stacks/visionstack.cpp
-
-	${OPTIONAL_SRCS}
 )
 
 qt4_wrap_cpp (MOC_SRCS
@@ -122,14 +96,11 @@ qt4_wrap_cpp (MOC_SRCS
 	src/app/plugins/visionplugin.h
 	
 	src/app/stacks/multistack_robocup_ssl.h
-
-	${OPTIONAL_HEADERS}
 )
 
 qt4_wrap_ui (UI_SRCS
 	src/app/gui/mainwindow.ui
 	src/app/gui/videowidget.ui
-	${OPTIONAL_UI_SRCS}
 )
 
 qt4_add_resources(RC_SRCS 
@@ -173,11 +144,6 @@ elseif (${arch} MATCHES "x86")
 	set (cc_flags "")
 endif()
 
-# make sure to use C++98 and enable warnings
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ansi")
-# enable warnings
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
-
 #flags to set in debug mode
 set (CMAKE_CXX_FLAGS_DEBUG "-g -Wl,--no-as-needed")
 
@@ -190,29 +156,22 @@ message (STATUS "Custom CC Flags: ${cc_flags}")
 add_definitions(${cc_flags})
 
 ## build the common code
-add_library(sslvision ${SHARED_MOC_SRCS} ${SHARED_RC_SRCS} ${CC_PROTO} ${SHARED_SRCS})
+add_library(sslvision STATIC ${SHARED_MOC_SRCS} ${SHARED_RC_SRCS} ${CC_PROTO} ${SHARED_SRCS})
 add_dependencies(sslvision GenerateProto)
-
-set (libs ${QT_LIBRARIES}
-	${CMAKE_THREAD_LIBS_INIT}
-	${OPENGL_gl_LIBRARY}
-	${OPENGL_glu_LIBRARY}
-	${PROTOBUF_LIBRARIES}
-	${DC1394_LIBRARIES}
-	${mvIMPACT_LIBRARIES}
-	${OpenCV_LIBS}
-	sslvision
-)
+message("<><> ${CC_PROTO}")
+set (libs ${QT_LIBRARIES} dc1394 jpeg png -I/usr/local/lib/ -lprotobuf pthread GL GLU sslvision)
 
 ## build the main app
 set (target vision)
 add_executable(${target} ${UI_SRCS} ${MOC_SRCS} ${RC_SRCS} ${SRCS})
-target_link_libraries(${target} ${libs})
+target_link_libraries(${target} ${libs} ${catkin_LIBRARIES} -lpthread -ldc1394 -L/usr/lib/x86_64-linux-gnu/ -lQtCore -I/home/kgpkubs/local/include -L/home/kgpkubs/local/lib -lprotobuf -lpthread -pthread)
+set_target_properties(${target} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 
 ##build non graphical client
 set (client client)
 add_executable(${client} src/client/main.cpp )
-target_link_libraries(${client} ${libs})
+target_link_libraries(${client} ${libs} -lpthread -ldc1394 -L/usr/lib/x86_64-linux-gnu/ -lQtCore -I/home/kgpkubs/local/include -L/home/kgpkubs/local/lib -lprotobuf -lpthread -pthread)
+set_target_properties(${client} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 
 ##build logging client
 set (lclient logClient)
@@ -223,7 +182,8 @@ add_executable(${lclient} ${LCLIENT_MOC_SRCS}
 	src/logClient/GraphicsPrimitives.cpp
 	src/logClient/LogControl.cpp
 )
-target_link_libraries(${lclient} ${libs})
+target_link_libraries(${lclient} ${libs} -lpthread -ldc1394 -L/usr/lib/x86_64-linux-gnu/ -lQtCore -I/home/kgpkubs/local/include -L/home/kgpkubs/local/lib -lprotobuf -lpthread -pthread)
+set_target_properties(${lclient} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 
 ##build graphical client
 set (gclient graphicalClient)
@@ -232,4 +192,5 @@ add_executable(${gclient} ${GCLIENT_MOC_SRCS}
   src/graphicalClient/soccerview.cpp
   src/graphicalClient/gltext.cpp
 )
-target_link_libraries(${gclient} ${libs})
+target_link_libraries(${gclient} ${libs} -lpthread -ldc1394 -L/usr/lib/x86_64-linux-gnu/ -lQtCore -I/home/kgpkubs/local/include -L/home/kgpkubs/local/lib -lprotobuf -lpthread -pthread)
+set_target_properties(${gclient} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)

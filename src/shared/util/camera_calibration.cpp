@@ -1,6 +1,6 @@
 #include "camera_calibration.h"
-#include <Eigen/Cholesky>
-#include <Eigen/Dense>
+#include <eigen3/Eigen/Cholesky>
+#include <eigen3/Eigen/Dense>
 #include <iostream>
 #include <algorithm>
 #include <limits>

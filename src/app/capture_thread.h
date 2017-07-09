@@ -24,6 +24,7 @@
 #include "capturedc1394v2.h"
 #include "capturefromfile.h"
 #include "capturev4l.h"
+#include "capture_ros.h"
 #include "capture_generator.h"
 #include <QThread>
 #include "ringbuffer.h"
@@ -37,6 +38,11 @@
 #include "capture_bluefox2.h"
 #endif
 
+#include <ros/ros.h>
+#include <image_transport/image_transport.h>
+#include <opencv2/highgui/highgui.hpp>
+#include <cv_bridge/cv_bridge.h>
+#include <ros/callback_queue.h>
 /*!
   \class   CaptureThread
   \brief   A thread for capturing and processing video data
@@ -55,6 +61,8 @@ protected:
   CaptureInterface * captureV4L;
   CaptureInterface * captureBlueFox2;
   CaptureInterface * captureFiles;
+  CaptureInterface * captureROS;
+  ros::NodeHandle * nh;
   CaptureInterface * captureGenerator;
   AffinityManager * affinity;
   FrameBuffer * rb;
@@ -66,6 +74,7 @@ protected:
   VarList * bluefox2;
   VarList * generator;
   VarList * fromfile;
+  VarList * ROS;
   VarList * control;
   VarTrigger * c_start;
   VarTrigger * c_stop;

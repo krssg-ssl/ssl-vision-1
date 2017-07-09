@@ -22,7 +22,7 @@
 #include <VarDouble.h>
 #include <VarList.h>
 #include <quaternion.h>
-#include <Eigen/Core>
+#include <eigen3/Eigen/Core>
 #include "field.h"
 #include "timer.h"
 
